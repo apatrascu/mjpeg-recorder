@@ -1,5 +1,6 @@
 FROM ubuntu:16.04
 
+RUN mv /etc/localtime /etc/localtime.bak && ln -s /usr/share/zoneinfo/Europe/Bucharest /etc/localtime
 RUN apt-get update
 RUN apt-get install -y \
     ffmpeg \
