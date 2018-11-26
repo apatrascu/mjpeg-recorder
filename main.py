@@ -49,15 +49,3 @@ if __name__ == "__main__":
         jpg = get_image()
         if jpg is not None:
             video_writer.write(jpg)
-        # r = requests.get('http://192.168.1.103/image/jpeg.cgi', stream=True)
-        # if r.status_code == 200:
-        #     data = bytes()
-        #     for chunk in r.iter_content(chunk_size=1024):
-        #         data += chunk
-        #         a = data.find(b'\xff\xd8')
-        #         b = data.find(b'\xff\xd9')
-        #         if a != -1 and b != -1:
-        #             jpg = data[a:b + 2]
-        #             data = data[b + 2:]
-        #             i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-        #             video_writer.write(i)
