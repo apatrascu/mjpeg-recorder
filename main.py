@@ -7,7 +7,6 @@ import datetime
 
 FPS = 15
 OUTPUT_DIR = "video/"
-CACHE = []
 
 
 def get_current_date():
@@ -49,8 +48,4 @@ if __name__ == "__main__":
             video_writer = init_video(fourcc, current_date)
         jpg = get_image()
         if jpg is not None:
-            CACHE.append(jpg)
-        if len(CACHE) >= FPS * 60:
-            for jpg in CACHE:
-                video_writer.write(jpg)
-            CACHE = []
+            video_writer.write(jpg)
