@@ -80,13 +80,13 @@ def join_videos():
     while not queue.empty():
         filename = queue.get()
         cap = cv2.VideoCapture(filename)
-        frame = cap.read()
+        ret, frame = cap.read()
         while frame is not None:
             video_writer.write(frame)
             ret, frame = cap.read()
             video_created = True
         cap.release()
-        os.remove(filename)
+        #os.remove(filename)
     video_writer.release()
     if not video_created:
         if os.path.exists(output):
@@ -125,3 +125,17 @@ if __name__ == "__main__":
         delta = end - start
         if delta < sleep_time:
             time.sleep(sleep_time - delta)
+    # for i in range(5):
+    #     for j in range(FPS*5):
+    #         jpg = get_image()
+    #         if jpg is not None:
+    #             video_writer.write(jpg)
+    #         time.sleep(sleep_time)
+    #     video_writer.release()
+    #     queue.put(current_video_name)
+    #     video_writer = init_video()
+    # for file in os.listdir(OUTPUT_DIR):
+    #     if file != "empty":
+    #         print(OUTPUT_DIR + file)
+    #         queue.put(OUTPUT_DIR + file)
+    # join_videos()
