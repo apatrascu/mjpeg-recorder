@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import cv2
 import requests
 import numpy as np
@@ -16,7 +17,7 @@ MINUTE_DIR = OUTPUT_DIR + "minute/"
 DAILY_DIR = OUTPUT_DIR + "daily/"
 FOURCC = cv2.VideoWriter_fourcc(*'mp4v')
 image_queue = queue.Queue()
-TESTING = False
+PRODUCTION = True
 
 
 def log(message):
@@ -72,7 +73,7 @@ def dump_frames_from_queue_to_video_file():
 def daily_backup_videos_to_single_video_file():
     # https://gist.github.com/nkint/8576156
     log("backup_videos_to_single_video_file")
-    if TESTING:
+    if not PRODUCTION:
         output = DAILY_DIR + get_minute() + ".mp4"
     else:
         output = DAILY_DIR + get_previous_day() + ".mp4"
@@ -102,7 +103,28 @@ def daily_backup_videos_to_single_video_file():
             os.remove(output)
 
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="MJPEG Recorder")
+    parser.add_argument(
+        '-p', '--production',
+        help='production mode: (default) --production yes ; testing mode: --production no',
+        type=str2bool,
+        default=True
+    )
+    args = parser.parse_args()
+
+    PRODUCTION = args.production
+    log("Running with PRODUCTION=%s" % str(PRODUCTION))
+
     if not os.path.isdir(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     if not os.path.isdir(DAILY_DIR):
@@ -113,7 +135,7 @@ if __name__ == "__main__":
     scheduler = BlockingScheduler()
     image_pusher_thread = threading.Thread(target=image_pusher_runner)
 
-    if TESTING:
+    if not PRODUCTION:
         scheduler.add_job(dump_frames_from_queue_to_video_file, trigger='interval', seconds=10)
         scheduler.add_job(daily_backup_videos_to_single_video_file, trigger='cron', minute='*', hour='*', day='*', month='*', week='*')
     else:
