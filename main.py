@@ -16,7 +16,11 @@ MINUTE_DIR = OUTPUT_DIR + "minute/"
 DAILY_DIR = OUTPUT_DIR + "daily/"
 FOURCC = cv2.VideoWriter_fourcc(*'mp4v')
 image_queue = queue.Queue()
-TESTING = True
+TESTING = False
+
+
+def log(message):
+    print("[%s] %s" % (datetime.datetime.today().strftime("%Y.%m.%d-%H:%M:%S"), message))
 
 
 def get_uid():
@@ -55,7 +59,7 @@ def image_pusher_runner():
 
 
 def dump_frames_from_queue_to_video_file():
-    print("dump_frames_from_queue_to_video_file")
+    log("dump_frames_from_queue_to_video_file")
     output = MINUTE_DIR + get_uid() + ".mp4"
     video_writer = cv2.VideoWriter(output, FOURCC, FPS, (640, 480))
     frame_count = image_queue.qsize()
@@ -66,8 +70,8 @@ def dump_frames_from_queue_to_video_file():
 
 
 def daily_backup_videos_to_single_video_file():
-    print("backup_videos_to_single_video_file")
     # https://gist.github.com/nkint/8576156
+    log("backup_videos_to_single_video_file")
     if TESTING:
         output = DAILY_DIR + get_minute() + ".mp4"
     else:
