@@ -112,7 +112,7 @@ if __name__ == "__main__":
             queue.put(current_video_name)
             start_minute = get_minute()
             video_writer = init_video()
-        elif is_new_hour():
+        elif is_new_hour(start_hour):
             video_writer.release()
             queue.put(current_video_name)
             start_hour = get_hour()
