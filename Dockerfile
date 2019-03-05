@@ -1,14 +1,5 @@
-FROM ubuntu:16.04
+FROM palecsandru/mjpeg-recorder-base
 
-RUN mv /etc/localtime /etc/localtime.bak && ln -s /usr/share/zoneinfo/Europe/Bucharest /etc/localtime
-RUN apt-get update
-RUN apt-get install -y \
-    ffmpeg \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    python3 \
-    python3-pip
 RUN mkdir -p /root/video
 ADD * /root/
 RUN pip3 install -r /root/requirements.txt
