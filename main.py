@@ -5,55 +5,31 @@ import numpy as np
 import datetime
 import queue
 import os
-import time
-# import threading
+import threading
+import shutil
+from apscheduler.schedulers.background import BlockingScheduler
 
 
-FPS = 15
+FPS = 10
 OUTPUT_DIR = "video/"
-queue = queue.Queue()
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-sleep_time = 1 / FPS
-current_video_name = ""
+MINUTE_DIR = OUTPUT_DIR + "minute/"
+DAILY_DIR = OUTPUT_DIR + "daily/"
+FOURCC = cv2.VideoWriter_fourcc(*'mp4v')
+image_queue = queue.Queue()
+TESTING = True
 
 
 def get_uid():
     return datetime.datetime.today().strftime("%Y%m%d%H%M%S%f")
 
 
-def get_day():
-    return datetime.datetime.today().strftime("%Y%m%d")
-
-
 def get_minute():
     return datetime.datetime.today().strftime("%Y%m%d%H%M")
 
 
-def get_hour():
-    return datetime.datetime.today().strftime("%Y%m%d%H")
-
-
-def init_video():
-    global current_video_name
-    output = OUTPUT_DIR + get_uid() + ".mp4"
-    current_video_name = output
-    video_writer = cv2.VideoWriter(output, fourcc, FPS, (640, 480))
-    return video_writer
-
-
-def is_new_day(base):
-    current = get_day()
-    return base != current
-
-
-def is_new_minute(base):
-    current = get_minute()
-    return base != current
-
-
-def is_new_hour(base):
-    current = get_hour()
-    return base != current
+def get_previous_day():
+    yesterday = datetime.date.today() - datetime.timedelta(1)
+    return yesterday.strftime("%Y%m%d")
 
 
 def get_image():
@@ -66,76 +42,79 @@ def get_image():
             b = data.find(b'\xff\xd9')
             if a != -1 and b != -1:
                 jpg = data[a:b + 2]
-                data = data[b + 2:]
                 i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 return i
     return None
 
 
-def join_videos():
+def image_pusher_runner():
+    while True:
+        jpg = get_image()
+        if jpg is not None:
+            image_queue.put(jpg)
+
+
+def dump_frames_from_queue_to_video_file():
+    print("dump_frames_from_queue_to_video_file")
+    output = MINUTE_DIR + get_uid() + ".mp4"
+    video_writer = cv2.VideoWriter(output, FOURCC, FPS, (640, 480))
+    frame_count = image_queue.qsize()
+    for i in range(frame_count):
+        frame = image_queue.get()
+        video_writer.write(frame)
+    video_writer.release()
+
+
+def daily_backup_videos_to_single_video_file():
+    print("backup_videos_to_single_video_file")
     # https://gist.github.com/nkint/8576156
-    output = OUTPUT_DIR + get_uid() + ".mp4"
-    video_writer = cv2.VideoWriter(output, fourcc, FPS, (640, 480))
-    video_created = False
-    while not queue.empty():
-        filename = queue.get()
+    if TESTING:
+        output = DAILY_DIR + get_minute() + ".mp4"
+    else:
+        output = DAILY_DIR + get_previous_day() + ".mp4"
+
+    videos = os.listdir(MINUTE_DIR)
+    if len(videos) == 0:
+        return
+    if len(videos) == 1:
+        shutil.move(MINUTE_DIR + videos[0], output)
+        return
+
+    video_writer = cv2.VideoWriter(output, FOURCC, FPS, (640, 480))
+    written_into_video = False
+    for video in videos:
+        filename = MINUTE_DIR + video
         cap = cv2.VideoCapture(filename)
         ret, frame = cap.read()
         while frame is not None:
             video_writer.write(frame)
             ret, frame = cap.read()
-            video_created = True
+            written_into_video = True
         cap.release()
-        #os.remove(filename)
+        os.remove(filename)
     video_writer.release()
-    if not video_created:
+    if not written_into_video:
         if os.path.exists(output):
             os.remove(output)
 
 
 if __name__ == "__main__":
-    start_day = get_day()
-    start_minute = get_minute()
-    start_hour = get_hour()
-    video_writer = init_video()
-    # video_joiner_thread = threading.Thread(target=join_videos)
-    # video_joiner_thread.start()
-    while True:
-        start = time.time()
-        if is_new_day(start_day):
-            video_writer.release()
-            queue.put(current_video_name)
-            start_day = get_day()
-            video_writer = init_video()
-        elif is_new_minute(start_minute):
-            video_writer.release()
-            queue.put(current_video_name)
-            start_minute = get_minute()
-            video_writer = init_video()
-        elif is_new_hour(start_hour):
-            video_writer.release()
-            queue.put(current_video_name)
-            start_hour = get_hour()
-            video_writer = init_video()
-            join_videos()
-        jpg = get_image()
-        if jpg is not None:
-            video_writer.write(jpg)
-        end = time.time()
-        delta = end - start
-        if delta < sleep_time:
-            time.sleep(sleep_time - delta)
-    # for i in range(5):
-    #     for j in range(FPS*5):
-    #         jpg = get_image()
-    #         if jpg is not None:
-    #             video_writer.write(jpg)
-    #         time.sleep(sleep_time)
-    #     video_writer.release()
-    #     queue.put(current_video_name)
-    #     video_writer = init_video()
-    # for file in os.listdir(OUTPUT_DIR):
-    #     if file != "empty":
-    #         print(OUTPUT_DIR + file)
-    #         queue.put(OUTPUT_DIR + file)
-    # join_videos()
+    if not os.path.isdir(OUTPUT_DIR):
+        os.mkdir(OUTPUT_DIR)
+    if not os.path.isdir(DAILY_DIR):
+        os.mkdir(DAILY_DIR)
+    if not os.path.isdir(MINUTE_DIR):
+        os.mkdir(MINUTE_DIR)
+
+    scheduler = BlockingScheduler()
+    image_pusher_thread = threading.Thread(target=image_pusher_runner)
+
+    if TESTING:
+        scheduler.add_job(dump_frames_from_queue_to_video_file, trigger='interval', seconds=10)
+        scheduler.add_job(daily_backup_videos_to_single_video_file, trigger='cron', minute='*', hour='*', day='*', month='*', week='*')
+    else:
+        scheduler.add_job(dump_frames_from_queue_to_video_file, trigger='interval', seconds=60)
+        scheduler.add_job(daily_backup_videos_to_single_video_file, trigger='cron', hour='00', minute='00', second='30')
+
+    image_pusher_thread.start()
+    scheduler.start()
