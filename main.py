@@ -78,7 +78,7 @@ def daily_backup_videos_to_single_video_file():
     else:
         output = DAILY_DIR + get_previous_day() + ".mp4"
 
-    videos = os.listdir(MINUTE_DIR)
+    videos = sorted(os.listdir(MINUTE_DIR))
     if len(videos) == 0:
         return
     if len(videos) == 1:
